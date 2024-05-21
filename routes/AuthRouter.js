@@ -1,9 +1,9 @@
 const express = require("express");
 const User = require("../db/userModel");
 const router = express.Router();
-const argon2 = require("argon2");
 const jwt = require("jsonwebtoken");
 const { verifyToken } = require("../middleware/auth");
+const bcrypt = require("bcrypt");
 
 router.get("/", verifyToken, async (req, res) => {
   console.log(req);
@@ -20,28 +20,25 @@ router.get("/", verifyToken, async (req, res) => {
 });
 
 router.post("/user", async (req, res) => {
-  const { login_name, password, ...rest } = req.body;
+  const { login_name, password, confirmPassword, ...rest } = req.body;
 
   if (!login_name || !password)
-    return res
-      .status(400)
-      .json("Missing username and/or password");
+    return res.status(400).json("Missing username or password");
 
   try {
-    // Check for existing user
+    // Check if user already exists
     const user = await User.findOne({ login_name });
-    console.log("user", user);
 
     if (user)
-      return res
-        .status(400)
-        .json("Username already taken");
+      return res.status(400).json("Username already taken");
 
-    const hashedPassword = await argon2.hash(password);
+    //hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
     const newUser = new User({ login_name, password: hashedPassword, ...rest });
     await newUser.save();
 
-    // Return token
     const accessToken = jwt.sign(
       { userId: newUser._id },
       process.env.ACCESS_TOKEN_SECRET
@@ -49,7 +46,7 @@ router.post("/user", async (req, res) => {
 
     res.json(accessToken);
   } catch (error) {
-    console.log(error);
+    console.log("Error in Register route: ",error.message);
     res.status(500).json("Internal server error");
   }
 });
@@ -58,17 +55,17 @@ router.post("/user", async (req, res) => {
 router.post("/login", async (req, res) => {
   const { login_name, password } = req.body;
 
-  if (!login_name || !password)
-    return res.status(400).json("Missing username and/or password");
+  // if (!login_name || !password)
+  //   return res.status(400).json("Missing username or password");
 
   try {
     const user = await User.findOne({ login_name });
     if (!user)
       return res.status(400).json("Incorrect username");
 
-    const passwordValid = await argon2.verify(user.password, password);
-    if (!passwordValid)
-      return res.status(400).json("Incorrect username or password");
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid)
+      return res.status(400).json("Incorrect password");
 
     const accessToken = jwt.sign(
       { userId: user._id },
@@ -77,7 +74,7 @@ router.post("/login", async (req, res) => {
 
     res.json(accessToken);
   } catch (error) {
-    console.log(error);
+    console.log("Error in login route:",error.message);
     res.status(500).json("Internal server error");
   }
 });

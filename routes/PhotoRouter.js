@@ -6,24 +6,21 @@ const { verifyToken } = require("../middleware/auth");
 const upload = require("../utils/uploadFile");
 
 
-router.post("/", async (request, response) => {
-});
-
-router.get("/:photo_id", verifyToken, async (request, response) => {
-  const photoId = request.params.photo_id;
+router.get("/:photo_id", verifyToken, async (req, res) => {
+  const photoId = req.params.photo_id;
   try {
     const photoModel = await Photo.findById(photoId);
-    if (!photoModel) return response.status(400).json("Photo not found");
+    if (!photoModel) return res.status(400).json("Photo not found");
 
-    return response.status(200).json(photoModel);
+    return res.status(200).json(photoModel);
   } catch (err) {
-    console.error('Doing /:photo_id error: ', err);
-    return response.status(400).json(err);
+    console.error('/:photo_id error: ', err.message);
+    return res.status(400).json(err);
   }
 })
 
-router.get("/photosOfUser/:id", async (request, response) => {
-  const id = request.params.id;
+router.get("/photosOfUser/:id", async (req, res) => {
+  const id = req.params.id;
 
   try {
     const photoModel = await Photo
@@ -39,28 +36,28 @@ router.get("/photosOfUser/:id", async (request, response) => {
       })
     if (photoModel == null || photoModel == undefined) {
       console.log('Photos witd _id:' + id + 'not found.');
-      response.status(400).send('Not found.');
+      res.status(400).send('Not found.');
       return;
     }
-    return response.status(200).json(photoModel)
+    return res.status(200).json(photoModel)
 
   } catch (err) {
-    console.error('Doing /photoOfUser/:id error: ', err);
-    response.status(400).send(JSON.stringify(err));
+    console.error('/photoOfUser/:id error: ', err.message);
+    res.status(400).send(JSON.stringify(er.messager));
     return;
 
   }
 });
 
-router.post("/commentsOfPhoto/:photo_id", verifyToken, async (request, response) => {
-  const photoId = request.params.photo_id;
-  const userId = request.userId;
-  const { comment } = request.body;
+router.post("/commentsOfPhoto/:photo_id", verifyToken, async (req, res) => {
+  const photoId = req.params.photo_id;
+  const userId = req.userId;
+  const { comment } = req.body;
 
-  if (!comment) return response.status(400).json("Missing comment");
+  if (!comment) return res.status(400).json("Missing comment");
   try {
     const photoModel = await Photo.findById(photoId);
-    if (!photoModel) return response.status(400).json("Photo not found");
+    if (!photoModel) return res.status(400).json("Photo not found");
 
     const newComment = { comment, user_id: userId };
 
@@ -68,27 +65,27 @@ router.post("/commentsOfPhoto/:photo_id", verifyToken, async (request, response)
     else photoModel.comments.unshift(newComment);
     await photoModel.save();
 
-    return response.status(200).json(photoModel.comments[0]);
+    return res.status(200).json(photoModel.comments[0]);
   } catch (error) {
-    console.error('Doing /commentsOfPhoto/:photo_id error: ', err);
-    return response.status(400).json(err);
+    console.error('/commentsOfPhoto/:photo_id error: ', err.message);
+    return res.status(400).json(err.message);
   }
 })
 
-router.post("/photos/new", verifyToken, upload.single("image"), async (request, response) => {
-  const userId = request.userId;
-  if (!request.file)
-    return response.status(400).json("No files to upload");
+router.post("/photos/new", verifyToken, upload.single("image"), async (req, res) => {
+  const userId = req.userId;
+  if (!req.file)
+    return res.status(400).json("No files to upload");
   const userPhoto = new Photo({
-    file_name: `${request.file.filename}`,
+    file_name: `${req.file.filename}`,
     user_id: userId,
   });
   try {
     const newUserPhoto = await userPhoto.save();
-    return response.status(200).json(newUserPhoto);
+    return res.status(200).json(newUserPhoto);
   } catch (err) {
-    console.error('Doing /photos/new error: ', err);
-    return response.status(400).json(err);
+    console.error('/photos/new error: ', err.message);
+    return res.status(400).json(err.message);
   }
 })
 
